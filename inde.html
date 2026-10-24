@@ -1,0 +1,383 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>playhtml starter</title>
+  <style>
+    :root {
+      --color-bg: #f4f5df;
+      --color-primary: #ffff00;
+      --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body { font-family: var(--font-family); background-color: var(--color-bg); margin: 0; padding: 1rem; }
+    .wrapper {margin: 0 1rem; }
+    .content { display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    .title { color: #2800ff; font-weight: 700; font-size: 64px; line-height: 1.05; margin: 0 0 1rem; }
+    .illustration { max-width: 100%; max-height: 240px; margin-top: 2rem; }
+    .instructions { margin: 1rem auto 0; }
+    button, input { font-family: inherit; font-size: 100%; background: #ffffff; border: 1px solid #000; padding: 0.5rem 1rem; transition: 500ms; }
+    h2 { color: #2800ff; }
+    .illustration:active { transform: translateY(5px); }
+    .dipped { transform: translateY(5px); }
+    #lamp.toggled { filter: brightness(1.2) saturate(1.6) drop-shadow(0px 0px 50px rgba(247, 220, 156, 0.85)); }
+    .highlighted { box-shadow: 0px 0px 30px 10px rgb(245, 169, 15) !important; background: rgb(245 169 15 / 80%); }
+    .capabilities li { width: fit-content; cursor: zoom-in; padding: 4px 0; }
+    .capabilities li:hover { text-shadow: 0px 0px 4px rgb(245, 169, 15); }
+    #colorBox { width: 200px; height: 60px; margin-bottom: 10px; background-color: white; display: block; }
+    #shootingStar { top: -36px; left: -36px; font-size: 36px; position: fixed; text-shadow: 0 0 4px yellow; }
+    #hoverBox.hovered { background: blue !important; transform: scale(1.1); }
+    .reaction { transition: all 0.2s ease; cursor: pointer; }
+    .reaction.reacted { background: #ff6b6b; transform: scale(1.05); box-shadow: 0 5px 15px rgba(255, 107, 107, 0.3); }
+    
+/* Full-screen weather effect */
+#weatherEffect {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* Clouds */
+.rain-cloud {
+  position: absolute;
+  top: 5%;
+  font-size: 90px;
+  animation: cloudEnter 1.5s ease-out both;
+}
+
+@keyframes cloudEnter {
+  from {
+    transform: translateX(-100vw);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* Falling raindrops */
+.raindrop {
+  position: absolute;
+  top: -30px;
+  width: 2px;
+  height: 22px;
+  background: #75bfff;
+  opacity: 0.8;
+  animation: rainfall 0.8s linear infinite;
+}
+
+@keyframes rainfall {
+  from {
+    transform: translateY(-30px);
+  }
+  to {
+    transform: translateY(110vh);
+  }
+}
+
+/* Rainbow */
+.rainbow {
+  position: absolute;
+  width: 65vw;
+  height: 32.5vw;
+  max-width: 700px;
+  max-height: 350px;
+  left: 50%;
+  top: 15%;
+  transform: translateX(-50%);
+  border-radius: 700px 700px 0 0;
+  background: radial-gradient(
+    ellipse at center bottom,
+    transparent 0%,
+    transparent 42%,
+    violet 43%,
+    indigo 47%,
+    blue 51%,
+    green 55%,
+    yellow 59%,
+    orange 63%,
+    red 67%,
+    transparent 71%
+  );
+  opacity: 0;
+animation: rainbowAppear 3s ease-in-out forwards;
+}
+
+#randomWordOverlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  pointer-events: none;
+}
+
+.random-word {
+  font-size: clamp(48px, 10vw, 120px);
+  font-weight: bold;
+  color: #2800ff;
+  text-align: center;
+  text-shadow: 3px 3px 0px #ffff00;
+}
+
+@keyframes rainbowAppear {
+  0% { opacity: 0; }
+  40% { opacity: 1; }
+  80% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="content" role="main">
+      <h1 class="title" id="title">And then... </h1>
+        <h2>Instructions</h2>
+        <p>This is a social experiment to build a story, a poem, a series of thoughts as a collective.</p>
+      </div>
+    </div>
+
+<div>Contribute to the story</div>
+
+<input id="guestbookValue" placeholder="type here..."/>
+
+<label for="textColor">Choose your text color:</label>
+<input type="color" id="textColor" value="#2800ff">
+
+<button onclick="addGuestbook()">ENTER</button>
+
+<ul id="guestbook"></ul>
+
+  <div id="shootingStar">★</div>
+
+    <div>
+      Need some inspiration?
+      <button onclick="shootStar()">star me!</button>
+      <button onclick="triggerRain()">change my mood</button>
+      <button onclick="triggerRandomWords()">random words plz</button>
+    </div>
+
+  <script type="module">
+    import { playhtml, html } from "playhtml";
+
+    playhtml.register("reactionBtn", {
+      defaultData: { count: 0 },
+      view: ({ data, setData }) => {
+        const hasReacted = Boolean(localStorage.getItem("reacted-reaction"));
+        const react = () => {
+          if (localStorage.getItem("reacted-reaction")) {
+            setData((d) => { d.count -= 1; });
+            localStorage.removeItem("reacted-reaction");
+          } else {
+            setData((d) => { d.count += 1; });
+            localStorage.setItem("reacted-reaction", "true");
+          }
+        };
+        return html`
+          <button
+            class="reaction ${hasReacted ? "reacted" : ""}"
+            style="font-size: 24px; padding: 10px 20px; margin: 10px 0;"
+            @click=${react}
+          >
+            react ${data.count}
+          </button>
+        `;
+      },
+    });
+
+    await playhtml.init({
+      developmentMode: true,
+      cursors: { enabled: true, room: "page" },
+    });
+
+    window.playhtml = playhtml;
+
+    function shootStar() {
+      window.playhtml.dispatchPlayEvent({ type: "shootingStar" });
+    }
+    window.shootStar = shootStar;
+
+    window.playhtml.registerPlayEventListener("shootingStar", {
+      onEvent: () => {
+        document.getElementById("shootingStar").animate(
+          [
+            { transform: "translate(100vw, 100vh) rotate(0deg)" },
+            { transform: "translate(-10vw, -10vh) rotate(360deg)" },
+          ],
+          { duration: 2000, fill: "forwards" }
+        );
+      },
+    });
+    
+    // RAIN + RAINBOW EVENT
+
+    function triggerRain() {
+      window.playhtml.dispatchPlayEvent({
+        type: "rainAndRainbow"
+      });
+    }
+
+    window.triggerRain = triggerRain;
+
+    window.playhtml.registerPlayEventListener("rainAndRainbow", {
+      onEvent: () => {
+        createRainAndRainbow();
+      }
+    });
+
+    function createRainAndRainbow() {
+      // Remove any previous weather animation
+      document.getElementById("weatherEffect")?.remove();
+
+      const weather = document.createElement("div");
+      weather.id = "weatherEffect";
+      document.body.appendChild(weather);
+
+      // 1. CLOUDS APPEAR
+      for (let i = 0; i < 5; i++) {
+        const cloud = document.createElement("div");
+        cloud.className = "rain-cloud";
+        cloud.textContent = "☁️";
+        cloud.style.left = `${i * 22}%`;
+        cloud.style.top = `${5 + (i % 2) * 8}%`;
+        cloud.style.animationDelay = `${i * 0.2}s`;
+        weather.appendChild(cloud);
+      }
+
+      setTimeout(() => {
+        if (!weather.isConnected) return;
+
+        for (let i = 0; i < 120; i++) {
+          const drop = document.createElement("div");
+          drop.className = "raindrop";
+
+          drop.style.left = `${Math.random() * 100}%`;
+          drop.style.animationDelay = `${Math.random() * -2}s`;
+          drop.style.animationDuration =
+            `${0.5 + Math.random() * 0.7}s`;
+
+          weather.appendChild(drop);
+        }
+      }, 1500);
+
+      setTimeout(() => {
+        if (!weather.isConnected) return;
+
+        weather.querySelectorAll(".raindrop").forEach(
+          drop => drop.remove()
+        );
+
+        weather.querySelectorAll(".rain-cloud").forEach(
+          cloud => cloud.remove()
+        );
+      }, 5500);
+
+      // 4. RAINBOW APPEARS
+      setTimeout(() => {
+        if (!weather.isConnected) return;
+
+        const rainbow = document.createElement("div");
+        rainbow.className = "rainbow";
+        weather.appendChild(rainbow);
+      }, 5700);
+
+      setTimeout(() => {
+        weather.remove();
+      }, 9500);
+    }
+
+
+
+    const wordBank = [
+      "wonder", "chaos", "dream", "glimmer",
+      "strange", "possibility", "whisper",
+      "electric", "bloom", "infinite",
+      "curiosity", "wild", "imagine",
+      "mystery", "spark", "elsewhere",
+      "becoming", "unravel", "echo", "magic"
+    ];
+
+    function triggerRandomWords() {
+      window.playhtml.dispatchPlayEvent({
+        type: "randomWords"
+      });
+    }
+
+    window.triggerRandomWords = triggerRandomWords;
+
+    // Everyone receives the event and starts the animation
+    window.playhtml.registerPlayEventListener("randomWords", {
+      onEvent: () => {
+        showRandomWords();
+      }
+    });
+
+    let wordAnimationTimer;
+
+    function showRandomWords() {
+      // Stop any previous animation
+      clearInterval(wordAnimationTimer);
+      document.getElementById("randomWordOverlay")?.remove();
+
+      // Create the overlay
+      const overlay = document.createElement("div");
+      overlay.id = "randomWordOverlay";
+
+      const wordElement = document.createElement("div");
+      wordElement.className = "random-word";
+
+      overlay.appendChild(wordElement);
+      document.body.appendChild(overlay);
+
+      let index = 0;
+
+      function showNextWord() {
+        if (index >= 10) {
+          clearInterval(wordAnimationTimer);
+          overlay.remove();
+          return;
+        }
+
+        const randomIndex = Math.floor(
+          Math.random() * wordBank.length
+        );
+
+        wordElement.textContent = wordBank[randomIndex];
+        index++;
+      }
+
+      // Show first word immediately
+      showNextWord();
+
+      // Change word every half second
+      wordAnimationTimer = setInterval(showNextWord, 500);
+    }
+
+
+
+
+function addGuestbook() {
+  const message = document.getElementById("guestbookValue").value;
+  const color = document.getElementById("textColor").value;
+  if (!message.trim()) return;
+  const newMessage = document.createElement("li");
+  newMessage.textContent = message;
+  newMessage.style.color = color;
+  newMessage.setAttribute("can-move", "");
+  newMessage.id = "gb-" + Date.now();
+  document.getElementById("guestbook").appendChild(newMessage);
+  window.playhtml.setupPlayElement(newMessage);
+  document.getElementById("guestbookValue").value = "";
+}
+
+window.addGuestbook = addGuestbook;
+    
+  </script>
+</body>
+</html>
